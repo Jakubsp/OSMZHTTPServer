@@ -42,7 +42,7 @@ public class SocketServer extends Thread {
             while (bRunning) {
                 File sdPath = Environment.getExternalStorageDirectory();
                 File f = new File(sdPath.getAbsoluteFile() + "/index.htm");
-
+                Log.d("File Path", f.getAbsolutePath());
                 if (f.exists()) {
 
                 }
