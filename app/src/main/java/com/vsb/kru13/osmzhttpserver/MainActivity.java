@@ -7,14 +7,26 @@ import androidx.core.content.ContextCompat;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.view.Menu;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ScrollView;
+import android.widget.TextView;
+
+import java.sql.Time;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private SocketServer s;
     private static final int READ_EXTERNAL_STORAGE = 1;
+    TextView tvLog;
+    TextView tvTransfered;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,8 +39,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         btn1.setOnClickListener(this);
         btn2.setOnClickListener(this);
 
+        tvLog = (TextView)findViewById(R.id.txvLog);
+        tvTransfered = (TextView)findViewById(R.id.tvBytesTransfered);
     }
 
+
+
+    public final Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            String currentTime = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
+            Bundle bundle = msg.getData();
+            String string = bundle.getString("SERVER");
+            Long length = bundle.getLong("LENGTH");
+            tvLog.append(currentTime + " " + string + "\n");
+            tvLog.append(currentTime + " Total bytes transfered:" + Long.toString(length) + "\n");
+            tvTransfered.setText(Long.toString(Long.valueOf(String.valueOf(tvTransfered.getText())) + length));
+        }
+    };
 
     @Override
     public void onClick(View v) {
@@ -41,7 +69,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 ActivityCompat.requestPermissions(
                         this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, READ_EXTERNAL_STORAGE);
             } else {
-                s = new SocketServer();
+                s = new SocketServer(mHandler);
                 s.start();
             }
         }
@@ -62,7 +90,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             case READ_EXTERNAL_STORAGE:
                 if ((grantResults.length > 0) && (grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
-                    s = new SocketServer();
+                    s = new SocketServer(mHandler);
                     s.start();
                 }
                 break;

@@ -1,8 +1,13 @@
 package com.vsb.kru13.osmzhttpserver;
 
+import android.app.Activity;
 import android.content.Context;
+import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
+import android.widget.ScrollView;
 import android.widget.Toast;
 
 import java.io.BufferedReader;
@@ -21,8 +26,20 @@ public class SocketServer extends Thread {
 
     ServerSocket serverSocket;
     public final int port = 12345;
-    public final String folder = "HTTPServer";
     boolean bRunning;
+    private Handler mHandler;
+
+    public SocketServer(Handler mHandler) {
+        this.mHandler = mHandler;
+    }
+
+    private void SendMessage(String message) {
+        Message m = new Message();
+        Bundle b = new Bundle();
+        b.putString("SERVER", message);
+        m.setData(b);
+        mHandler.sendMessage(m);
+    }
 
     public void close() {
         try {
@@ -41,82 +58,12 @@ public class SocketServer extends Thread {
             bRunning = true;
 
             while (bRunning) {
-                String sdPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/" + folder;
-                String resp_http = "";
-
                 Log.d("SERVER", "Socket Waiting for connection");
-                Socket s = serverSocket.accept();
+                final Socket s = serverSocket.accept();
                 Log.d("SERVER", "Socket Accepted");
 
-                OutputStream o = s.getOutputStream();
-                BufferedWriter out = new BufferedWriter(new OutputStreamWriter(o));
-                BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
-
-                String tmp = in.readLine();
-                String filePath = null;
-                String fileType = null;
-
-                while (!tmp.isEmpty()) {
-                    Log.d("SERVER", tmp);
-                    String[] tmp_array = tmp.split(" ");
-                    if (tmp_array[0].equals("GET")) {
-                        filePath = tmp_array[1];
-                    }
-                    else if (tmp_array[0].equals(("Accept:"))) {
-                        fileType = tmp_array[1].split(",")[0];
-                    }
-                    tmp = in.readLine();
-                }
-
-                if (filePath.equals("/")) {
-                    File f = new File(sdPath + "/index.htm");
-                    if (f.exists()) {
-                        if (f.isFile()) {
-                            resp_http = "HTTP/1.0 200 OK\n" +
-                                    "     Content-type: text/html\n" +
-                                    "    Content_length: " + f.length() + "\n\n";
-                            FileInputStream fis = new FileInputStream(f);
-                            int content;
-                            while ((content = fis.read()) != -1) {
-                                resp_http += (char)content;
-                            }
-                        }
-
-                    }
-                    else {
-                        resp_http = "HTTP/1.0 404 NotFound\n" +
-                                "           Content-type: text/html\n" +
-                                "<html><h1>non</h1></html>\n";
-                    }
-                    out.write(resp_http);
-
-                    out.flush();
-                }
-                else {
-                    File f = new File(sdPath + filePath);
-                    if (f.exists()) {
-                        if (f.isFile() && fileType.equals("image/webp")) {
-                            resp_http = "HTTP/1.0 200 OK\n" +
-                                    "    Content-type: image/jpeg\n" +
-                                    "    Content_length: " + f.length() + "\n\n";
-
-                            out.write(resp_http);
-                            out.flush();
-
-                            FileInputStream fis = new FileInputStream(f);
-                            byte[] buff = new byte[fis.available()];
-                            while ((fis.read(buff)) != -1) {
-                            }
-
-                            o.write(buff);
-                            o.flush();
-                        }
-
-                    }
-                }
-
-                s.close();
-                Log.d("SERVER", "Socket Closed");
+                Thread clientThread = new ClientSocket(s, mHandler);
+                clientThread.start();
             }
         }
         catch (IOException e) {
@@ -134,4 +81,3 @@ public class SocketServer extends Thread {
     }
 
 }
-
