@@ -27,6 +27,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private static final int READ_EXTERNAL_STORAGE = 1;
     TextView tvLog;
     TextView tvTransfered;
+    private long bytesTransfered = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,8 +54,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             String string = bundle.getString("SERVER");
             Long length = bundle.getLong("LENGTH");
             tvLog.append(currentTime + " " + string + "\n");
-            tvLog.append(currentTime + " Total bytes transfered:" + Long.toString(length) + "\n");
-            tvTransfered.setText(Long.toString(Long.valueOf(String.valueOf(tvTransfered.getText())) + length));
+            bytesTransfered += length;
+            tvTransfered.setText(String.valueOf(bytesTransfered));
         }
     };
 

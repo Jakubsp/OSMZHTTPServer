@@ -21,6 +21,7 @@ import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.concurrent.Semaphore;
 
 public class SocketServer extends Thread {
 
@@ -29,17 +30,11 @@ public class SocketServer extends Thread {
     boolean bRunning;
     private Handler mHandler;
 
+
     public SocketServer(Handler mHandler) {
         this.mHandler = mHandler;
     }
 
-    private void SendMessage(String message) {
-        Message m = new Message();
-        Bundle b = new Bundle();
-        b.putString("SERVER", message);
-        m.setData(b);
-        mHandler.sendMessage(m);
-    }
 
     public void close() {
         try {

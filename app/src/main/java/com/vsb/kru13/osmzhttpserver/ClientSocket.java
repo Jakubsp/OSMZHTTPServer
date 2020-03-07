@@ -23,6 +23,7 @@ public class ClientSocket extends Thread {
     public final Socket s;
     private Handler mHandler;
     public final String sdPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/HTTPServer";
+    private String ipClient = "";
 
     public ClientSocket(Socket s, Handler mHandler) {
         this.s = s;
@@ -31,7 +32,7 @@ public class ClientSocket extends Thread {
 
 
     private void SendMessage(String message, long transByt) {
-        Message m = new Message();
+        Message m = mHandler.obtainMessage();
         Bundle b = new Bundle();
         b.putString("SERVER", message);
         b.putLong("LENGTH", transByt);
@@ -49,9 +50,12 @@ public class ClientSocket extends Thread {
             BufferedWriter out = new BufferedWriter(new OutputStreamWriter(o));
             BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
 
+            ipClient = s.getInetAddress().toString() + ":" + s.getPort();
+
             String tmp = in.readLine();
             String filePath = null;
             String fileType = null;
+            File f;
 
             while (!tmp.isEmpty()) {
                 Log.d("SERVER", tmp);
@@ -59,18 +63,71 @@ public class ClientSocket extends Thread {
                 if (tmp_array[0].equals("GET")) {
                     filePath = tmp_array[1];
                 }
-                else if (tmp_array[0].equals(("Accept:"))) {
-                    fileType = tmp_array[1].split(",")[0];
-                }
                 tmp = in.readLine();
             }
 
-            if (filePath.equals("/")) {
+            /* Finding filetype */
+            String[] tmp_filetype = null;
+            tmp_filetype = filePath.split("\\.");
+            if (tmp_filetype.length > 0)
+                fileType = tmp_filetype[tmp_filetype.length - 1];
+
+            /* Finding a file */
+            if (fileType.equals("/")) {
+                f = new File(sdPath + filePath + "index.htm");
+                fileType = "htm";
+            }
+            else
+                f = new File(sdPath + filePath);
+
+            /* Checking if file exists */
+            if (!f.exists()) {
+                resp_http = "HTTP/1.1 404 NotFound\n" +
+                            "Content-type: text/html\n\n" +
+                            "<html><h1>non</h1></html>\n";
+                out.write(resp_http);
+                out.flush();
+            }
+            else {
+                resp_http = "HTTP/1.1 200 OK\n" +
+                            "Content-type: ";
+                /* File is a text */
+                if (fileType.equals("htm")) {
+                    resp_http += "text/html\n" +
+                                 "Content_length: " + f.length() + "\n\n";
+                    FileInputStream fis = new FileInputStream(f);
+                    int content;
+                    while ((content = fis.read()) != -1) {
+                        resp_http += (char)content;
+                    }
+                    out.write(resp_http);
+
+                    out.flush();
+                }
+                /* File is a image */
+                else {
+                    resp_http += "image/" + fileType + "\n" +
+                                 "Content_length: " + f.length() + "\n\n";
+                    out.write(resp_http);
+                    out.flush();
+
+                    FileInputStream fis = new FileInputStream(f);
+                    byte[] buff = new byte[fis.available()];
+                    while ((fis.read(buff)) != -1) {
+                    }
+
+                    o.write(buff);
+                    o.flush();
+                }
+            }
+            SendMessage(ipClient + " requested address '" + f.getAbsolutePath().toString() +
+                    "' with total bytes " + f.length(), f.length());
+            /*if (filePath.equals("/")) {
                 File f = new File(sdPath + "/index.htm");
                 if (f.exists()) {
                     if (f.isFile()) {
                         SendMessage("Client requested index.html", f.length());
-                        resp_http = "HTTP/1.0 200 OK\n" +
+                        resp_http = "HTTP/1.1 200 OK\n" +
                                 "     Content-type: text/html\n" +
                                 "    Content_length: " + f.length() + "\n\n";
                         FileInputStream fis = new FileInputStream(f);
@@ -82,8 +139,8 @@ public class ClientSocket extends Thread {
 
                 }
                 else {
-                    resp_http = "HTTP/1.0 404 NotFound\n" +
-                            "           Content-type: text/html\n" +
+                    resp_http = "HTTP/1.1 404 NotFound\n" +
+                            "           Content-type: text/html\n\n" +
                             "<html><h1>non</h1></html>\n";
                 }
                 out.write(resp_http);
@@ -95,7 +152,7 @@ public class ClientSocket extends Thread {
                 if (f.exists()) {
                     if (f.isFile() && fileType.equals("image/webp")) {
                         SendMessage("Client requested image " + filePath, f.length());
-                        resp_http = "HTTP/1.0 200 OK\n" +
+                        resp_http = "HTTP/1.1 200 OK\n" +
                                 "    Content-type: image/jpeg\n" +
                                 "    Content_length: " + f.length() + "\n\n";
 
@@ -112,7 +169,7 @@ public class ClientSocket extends Thread {
                     }
 
                 }
-            }
+            }*/
             Log.d("SERVER", "Client thread ending");
             s.close();
             Log.d("SERVER", "Socket Closed");
