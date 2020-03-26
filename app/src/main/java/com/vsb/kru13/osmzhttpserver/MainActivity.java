@@ -6,6 +6,7 @@ import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.hardware.Camera;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -13,6 +14,7 @@ import android.os.Message;
 import android.view.Menu;
 import android.view.View;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -23,6 +25,8 @@ import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
+    private Camera mCamera;
+    private CameraPreview mPreview;
     private SocketServer s;
     private static final int READ_EXTERNAL_STORAGE = 1;
     TextView tvLog;
@@ -42,9 +46,23 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         tvLog = (TextView)findViewById(R.id.txvLog);
         tvTransfered = (TextView)findViewById(R.id.tvBytesTransfered);
+
+        mCamera = getCameraInstance();
+        mPreview = new CameraPreview(this, mCamera);
+        FrameLayout preview = (FrameLayout) findViewById(R.id.camera_preview);
+        preview.addView(mPreview);
     }
 
+    public static Camera getCameraInstance(){
+        Camera c = null;
+        try {
+            c = Camera.open();
+        }
+        catch (Exception e) {
 
+        }
+        return c;
+    }
 
     public final Handler mHandler = new Handler() {
         @Override

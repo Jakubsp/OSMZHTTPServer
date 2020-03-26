@@ -2,6 +2,7 @@ package com.vsb.kru13.osmzhttpserver;
 
 import android.app.Activity;
 import android.content.Context;
+import android.hardware.Camera;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -27,14 +28,25 @@ public class SocketServer extends Thread {
 
     ServerSocket serverSocket;
     public final int port = 12345;
+    private int maxClients = 5;
     boolean bRunning;
     private Handler mHandler;
+    private Semaphore semaphore;
 
 
     public SocketServer(Handler mHandler) {
         this.mHandler = mHandler;
+        semaphore = new Semaphore(maxClients);
     }
 
+    private void SendMessage(String message, long transByt) {
+        Message m = mHandler.obtainMessage();
+        Bundle b = new Bundle();
+        b.putString("SERVER", message);
+        b.putLong("LENGTH", transByt);
+        m.setData(b);
+        mHandler.sendMessage(m);
+    }
 
     public void close() {
         try {
@@ -57,8 +69,13 @@ public class SocketServer extends Thread {
                 final Socket s = serverSocket.accept();
                 Log.d("SERVER", "Socket Accepted");
 
-                Thread clientThread = new ClientSocket(s, mHandler);
-                clientThread.start();
+                if (semaphore.tryAcquire()) {
+                    Thread clientThread = new ClientSocket(s, mHandler, semaphore);
+                    clientThread.start();
+                }
+                else {
+                    SendMessage("Server couldn't accept incoming client:Too busy", 0);
+                }
             }
         }
         catch (IOException e) {

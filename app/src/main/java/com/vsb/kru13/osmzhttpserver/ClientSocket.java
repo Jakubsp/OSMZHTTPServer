@@ -18,16 +18,19 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
+import java.util.concurrent.Semaphore;
 
 public class ClientSocket extends Thread {
     public final Socket s;
     private Handler mHandler;
     public final String sdPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/HTTPServer";
     private String ipClient = "";
+    private Semaphore semaphore;
 
-    public ClientSocket(Socket s, Handler mHandler) {
+    public ClientSocket(Socket s, Handler mHandler, Semaphore semaphore) {
         this.s = s;
         this.mHandler = mHandler;
+        this.semaphore = semaphore;
     }
 
 
@@ -176,6 +179,9 @@ public class ClientSocket extends Thread {
 
         } catch (IOException e) {
             e.printStackTrace();
+        }
+        finally {
+            semaphore.release();
         }
     }
 }
