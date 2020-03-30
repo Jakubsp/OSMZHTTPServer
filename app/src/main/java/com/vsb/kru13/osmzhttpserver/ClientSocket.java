@@ -1,6 +1,7 @@
 package com.vsb.kru13.osmzhttpserver;
 
 import android.app.Activity;
+import android.hardware.Camera;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -26,11 +27,14 @@ public class ClientSocket extends Thread {
     public final String sdPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/HTTPServer";
     private String ipClient = "";
     private Semaphore semaphore;
+    private byte[] snapshot;
+    private Camera mCamera;
 
-    public ClientSocket(Socket s, Handler mHandler, Semaphore semaphore) {
+    public ClientSocket(Socket s, Handler mHandler, Semaphore semaphore, Camera mCamera) {
         this.s = s;
         this.mHandler = mHandler;
         this.semaphore = semaphore;
+        this.mCamera = mCamera;
     }
 
 
@@ -42,6 +46,15 @@ public class ClientSocket extends Thread {
         m.setData(b);
         mHandler.sendMessage(m);
     }
+
+    private Camera.PictureCallback mPicture = new Camera.PictureCallback() {
+        @Override
+        public void onPictureTaken(byte[] data, Camera camera) {
+            snapshot = data;
+        }
+    };
+
+
 
     @Override
     public void run() {
@@ -58,7 +71,7 @@ public class ClientSocket extends Thread {
             String tmp = in.readLine();
             String filePath = null;
             String fileType = null;
-            File f;
+            File f = null;
 
             while (!tmp.isEmpty()) {
                 Log.d("SERVER", tmp);
@@ -80,11 +93,26 @@ public class ClientSocket extends Thread {
                 f = new File(sdPath + filePath + "index.htm");
                 fileType = "htm";
             }
+            else if(fileType.equals("/camera/snapshot")){
+                fileType = "camSnap";
+            }
             else
                 f = new File(sdPath + filePath);
 
+            if (fileType.equals("camSnap")) {
+                mCamera.takePicture(null, null, mPicture);
+                Thread.sleep(1000);
+                mCamera.startPreview();
+                resp_http = "HTTP/1.1 200 OK\n" +
+                            "Content-type: image/jpeg" + "\n\n";
+                out.write(resp_http);
+                out.flush();
+
+                o.write(snapshot);
+                o.flush();
+            }
             /* Checking if file exists */
-            if (!f.exists()) {
+            else if (!f.exists()) {
                 resp_http = "HTTP/1.1 404 NotFound\n" +
                             "Content-type: text/html\n\n" +
                             "<html><h1>non</h1></html>\n";
@@ -106,6 +134,9 @@ public class ClientSocket extends Thread {
                     out.write(resp_http);
 
                     out.flush();
+
+                    SendMessage(ipClient + " requested address '" + f.getAbsolutePath().toString() +
+                            "' with total bytes " + f.length(), f.length());
                 }
                 /* File is a image */
                 else {
@@ -121,63 +152,17 @@ public class ClientSocket extends Thread {
 
                     o.write(buff);
                     o.flush();
+
+                    SendMessage(ipClient + " requested address '" + f.getAbsolutePath().toString() +
+                            "' with total bytes " + f.length(), f.length());
                 }
             }
-            SendMessage(ipClient + " requested address '" + f.getAbsolutePath().toString() +
-                    "' with total bytes " + f.length(), f.length());
-            /*if (filePath.equals("/")) {
-                File f = new File(sdPath + "/index.htm");
-                if (f.exists()) {
-                    if (f.isFile()) {
-                        SendMessage("Client requested index.html", f.length());
-                        resp_http = "HTTP/1.1 200 OK\n" +
-                                "     Content-type: text/html\n" +
-                                "    Content_length: " + f.length() + "\n\n";
-                        FileInputStream fis = new FileInputStream(f);
-                        int content;
-                        while ((content = fis.read()) != -1) {
-                            resp_http += (char)content;
-                        }
-                    }
 
-                }
-                else {
-                    resp_http = "HTTP/1.1 404 NotFound\n" +
-                            "           Content-type: text/html\n\n" +
-                            "<html><h1>non</h1></html>\n";
-                }
-                out.write(resp_http);
-
-                out.flush();
-            }
-            else {
-                File f = new File(sdPath + filePath);
-                if (f.exists()) {
-                    if (f.isFile() && fileType.equals("image/webp")) {
-                        SendMessage("Client requested image " + filePath, f.length());
-                        resp_http = "HTTP/1.1 200 OK\n" +
-                                "    Content-type: image/jpeg\n" +
-                                "    Content_length: " + f.length() + "\n\n";
-
-                        out.write(resp_http);
-                        out.flush();
-
-                        FileInputStream fis = new FileInputStream(f);
-                        byte[] buff = new byte[fis.available()];
-                        while ((fis.read(buff)) != -1) {
-                        }
-
-                        o.write(buff);
-                        o.flush();
-                    }
-
-                }
-            }*/
             Log.d("SERVER", "Client thread ending");
             s.close();
             Log.d("SERVER", "Socket Closed");
 
-        } catch (IOException e) {
+        } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
         finally {

@@ -18,6 +18,7 @@ import android.widget.FrameLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import java.io.File;
 import java.sql.Time;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -88,7 +89,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 ActivityCompat.requestPermissions(
                         this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, READ_EXTERNAL_STORAGE);
             } else {
-                s = new SocketServer(mHandler);
+                s = new SocketServer(mHandler, mCamera);
                 s.start();
             }
         }
@@ -109,7 +110,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             case READ_EXTERNAL_STORAGE:
                 if ((grantResults.length > 0) && (grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
-                    s = new SocketServer(mHandler);
+                    s = new SocketServer(mHandler, mCamera);
                     s.start();
                 }
                 break;

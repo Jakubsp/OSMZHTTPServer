@@ -8,8 +8,8 @@
 
     <FrameLayout
         android:id="@+id/camera_preview"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_width="80dp"
+        android:layout_height="60dp" />
 
     <Button
         android:id="@+id/button1"

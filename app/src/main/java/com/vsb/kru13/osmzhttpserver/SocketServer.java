@@ -32,11 +32,12 @@ public class SocketServer extends Thread {
     boolean bRunning;
     private Handler mHandler;
     private Semaphore semaphore;
+    private Camera mCamera;
 
-
-    public SocketServer(Handler mHandler) {
+    public SocketServer(Handler mHandler, Camera mCamera) {
         this.mHandler = mHandler;
         semaphore = new Semaphore(maxClients);
+        this.mCamera = mCamera;
     }
 
     private void SendMessage(String message, long transByt) {
@@ -70,7 +71,7 @@ public class SocketServer extends Thread {
                 Log.d("SERVER", "Socket Accepted");
 
                 if (semaphore.tryAcquire()) {
-                    Thread clientThread = new ClientSocket(s, mHandler, semaphore);
+                    Thread clientThread = new ClientSocket(s, mHandler, semaphore, mCamera);
                     clientThread.start();
                 }
                 else {
